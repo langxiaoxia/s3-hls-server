@@ -8,25 +8,43 @@ const config = {
 		secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
 	}
 };
-const bucketName = 'ipc-video-bucket-626676147343-us-east-1';
-const objExpires = 600; // seconds
-const timeSpan = 600; // seconds
-const IteminPlaylist = 6;
-const TSClipDuration = 3; // seconds
+const BUCKET_NAME = 'ipc-video-bucket-626676147343-us-east-1';
+const KEY_FORMAT = '/xx.ts';
+const PRESIGNED_URL_EXPIRES = 600; // seconds
+const MAX_TIME_SPAN = 3600; // seconds
+const MIN_ITEM_IN_PLAYLIST = 3;
+const MAX_ITEM_IN_PLAYLIST = 6;
+const TS_CLIP_DURATION = 3; // seconds
 
 const s3Client = new S3Client(config);
+
+function getSeq(key) {
+    const parts = key.split('/');
+    if (parts.length != 7) {
+        console.warn('invalid key!');
+        return 0;
+    }
+    const year = parts[1];
+    const month = parts[2];
+    const date = parts[3];
+    const hours = parts[4];
+    const minutes = parts[5];
+    const seconds = parts[6].substr(0, 2);
+    let t = new Date(year, month, date, hours, minutes, seconds);
+    return Math.trunc(t.getTime() / 3000);
+}
 
 // Get signed url for a key.
 async function getUrl(key) {
     const input = {
-        Bucket: bucketName,
+        Bucket: BUCKET_NAME,
         Key: key,
     };
     const command = new GetObjectCommand(input);
 
     let url = "";
     try {
-        url = await getSignedUrl(s3Client, command, { expiresIn: objExpires });
+        url = await getSignedUrl(s3Client, command, { expiresIn: PRESIGNED_URL_EXPIRES });
     } catch (err) {
         console.log("Error", err);
     }
@@ -35,11 +53,11 @@ async function getUrl(key) {
 
 // Get all keys for a specific prefix.
 async function getKeys(prefix) {
+    console.log('prefix: ' + prefix);
     const input = {
-        Bucket: bucketName,
+        Bucket: BUCKET_NAME,
         Prefix: prefix,
     };
-    console.log(input);
 	const command = new ListObjectsCommand(input);
 
     let keys = [];
@@ -66,8 +84,8 @@ async function getMinuteKeys(cameraId, startTime, endTime) {
         || startTime.getDate() != endTime.getDate()
         || startTime.getHours() != endTime.getHours()
         || startTime.getMinutes() != endTime.getMinutes()
-        || startTime.getSeconds() >= endTime.getSeconds()) {
-        console.log('invalid start or end');
+        || startTime.getSeconds() > endTime.getSeconds()) {
+        console.warn('invalid start or end!');
         return keys;
     }
 
@@ -75,13 +93,14 @@ async function getMinuteKeys(cameraId, startTime, endTime) {
     let prefix = buildPrefix(cameraId, startTime.toISOString().substr(0, 16));
     let cur_keys = await getKeys(prefix);
     for (let key of cur_keys) {
-        if (key.length < 5) {
-            console.log('bad key: ' + key);
-        } else {
+        if (key.length == (prefix.length + KEY_FORMAT.length)) {
+            // extract xx second from prefix/xx.ts
             const sec = Number(key.substr(key.length - 5, 2));
-            if ((sec + TSClipDuration) >= startTime.getSeconds() && sec <= endTime.getSeconds()) {
+            if ((sec + TS_CLIP_DURATION) >= startTime.getSeconds() && sec <= endTime.getSeconds()) {
                 keys.push(key);
             }
+        } else {
+            console.warn('bad key: ' + key);
         }
     }
     return keys;
@@ -124,7 +143,7 @@ function buildPrefixs(cameraId, startTime, endTime) {
 
 async function getKeysLatest(cameraId, nowTime) {
     const startTime = new Date(nowTime);
-    startTime.setSeconds(startTime.getSeconds() - IteminPlaylist * TSClipDuration);
+    startTime.setSeconds(startTime.getSeconds() - MAX_ITEM_IN_PLAYLIST * TS_CLIP_DURATION);
     const endTime = new Date(nowTime);
     let keys = await getKeysBetween(cameraId, startTime, endTime);
     return keys;
@@ -135,12 +154,12 @@ async function getKeysBetween(cameraId, startTime, endTime) {
 
     console.log('start: ' + startTime);
     console.log('end: ' + endTime);
-    if (startTime.getTime() >= endTime.getTime()) {
-        console.warn('end no more than start!');
+    if (startTime.getTime() > endTime.getTime()) {
+        console.warn('start more than end!');
         return keys;
     }
 
-    if ((endTime.getTime() - startTime.getTime()) > timeSpan * 1000) {
+    if ((endTime.getTime() - startTime.getTime()) > MAX_TIME_SPAN * 1000) {
         console.warn('time span too large!');
         return keys;
     }
@@ -150,7 +169,7 @@ async function getKeysBetween(cameraId, startTime, endTime) {
         && startTime.getDate() == endTime.getDate()
         && startTime.getHours() == endTime.getHours()
         && startTime.getMinutes() == endTime.getMinutes()) {
-        console.log('start and end in same minute');
+        console.log('[1] time span in same minute');
         keys = await getMinuteKeys(cameraId, startTime, endTime);
         return keys;
     }
@@ -168,7 +187,7 @@ async function getKeysBetween(cameraId, startTime, endTime) {
     console.log('end keys: ' + end_keys);
 
     if ((endTime.getTime() - startTime.getTime()) < 120 * 1000) {
-        console.log('time span less than two minutes');
+        console.log('[2] time span less than two minutes');
         if (start_keys.length > 0) {
             keys.push.apply(keys, start_keys);
         }
@@ -178,7 +197,7 @@ async function getKeysBetween(cameraId, startTime, endTime) {
         return keys;
     }
 
-    console.log('time span more than two minutes');
+    console.log('[3] time span more than two minutes');
     if (start_keys.length > 0) {
         keys.push.apply(keys, start_keys);
     }
@@ -208,24 +227,24 @@ async function getKeysBetween(cameraId, startTime, endTime) {
 
 async function writeLivePlaylist(response, cameraId, nowTime) {
     let keys = await getKeysLatest(cameraId, nowTime);
-    console.log(keys);
+    console.log('live keys: ' + keys);
     if (keys.length == 0) {
         response.writeHead(404);
         response.write('No Video Found!');
-        response.end(); 
+        response.end();
         return;
     }
 
-    response.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
+    let seq = getSeq(keys[0]);
+
+    response.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Private-Network': true });
     response.write('#EXTM3U\r\n');
-    response.write('#EXT-X-TARGETDURATION:3\r\n');
-    response.write('#EXT-X-MEDIA-SEQUENCE:0\r\n');
+    response.write('#EXT-X-TARGETDURATION:' + TS_CLIP_DURATION.toString() + '\r\n');
+    response.write('#EXT-X-MEDIA-SEQUENCE:' + seq + '\r\n');
 
     for (let key of keys) {
-        console.log(key);
         const url = await getUrl(key);
-        console.log(url);
-        response.write('#EXTINF:3,\r\n');
+        response.write('#EXTINF:' + TS_CLIP_DURATION.toString() + ',\r\n');
         response.write(url + '\r\n');
     }
 
@@ -234,7 +253,7 @@ async function writeLivePlaylist(response, cameraId, nowTime) {
 
 async function writeMediaPlaylist(response, cameraId, startTime, endTime) {
     const keys = await getKeysBetween(cameraId, startTime, endTime);
-    console.log(keys);
+    console.log('replay keys: ' + keys);
     if (keys.length == 0) {
         response.writeHead(404);
         response.write('No Video Found!');
@@ -244,14 +263,12 @@ async function writeMediaPlaylist(response, cameraId, startTime, endTime) {
 
     response.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
     response.write('#EXTM3U\r\n');
-    response.write('#EXT-X-TARGETDURATION:3\r\n');
+    response.write('#EXT-X-TARGETDURATION:' + TS_CLIP_DURATION.toString() + '\r\n');
     response.write('#EXT-X-PLAYLIST-TYPE:VOD\r\n');
     for (let key of keys) {
-        console.log(key);
         const url = await getUrl(key);
-        response.write('#EXTINF:3,\r\n');
+        response.write('#EXTINF:' + TS_CLIP_DURATION.toString() + ',\r\n');
         response.write(url + '\r\n');
-        response.write('#EXT-X-DISCONTINUITY\r\n');
     }
     response.write('#EXT-X-ENDLIST\r\n');
     response.end();
