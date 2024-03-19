@@ -1,54 +1,34 @@
 const { TS_CLIP_DURATION, getSeq, getUrl, getKeysLatest, getKeysBetween } = require('./s3_client');
+const java = require("java");
+var m3u8 = java.import("m3u8");
 
-async function getLivePlaylist(cameraId, nowTime) {
-  let m3u8 = "";
+async function getLivelist(cameraId, nowTime) {
   let keys = await getKeysLatest(cameraId, nowTime);
-  console.debug('live keys: ' + keys);
-  if (keys.length == 0) {
-    m3u8 += '#EXTM3U\r\n';
-    m3u8 += '#EXT-X-TARGETDURATION:' + TS_CLIP_DURATION.toString() + '\r\n';
-    return m3u8;
+  let seq = 0;
+  if (keys.length > 0) {
+    seq = getSeq(keys[0]);
   }
-
-  let seq = getSeq(keys[0]);
-
-  m3u8 += '#EXTM3U\r\n';
-  m3u8 += '#EXT-X-TARGETDURATION:' + TS_CLIP_DURATION.toString() + '\r\n';
-  m3u8 += '#EXT-X-MEDIA-SEQUENCE:' + seq + '\r\n';
-
+  let urls = [];
   for (let key of keys) {
     const url = await getUrl(key);
-    m3u8 += '#EXTINF:' + TS_CLIP_DURATION.toString() + ',\r\n';
-    m3u8 += url + '\r\n';
+    urls.push(url);
   }
-  return m3u8;
+  var playlist = m3u8.GetLivePlayListSync(urls, TS_CLIP_DURATION.toString(), seq.toString());
+  return playlist;
 }
 
-async function getMediaPlaylist(cameraId, startTime, endTime) {
-  let m3u8 = "";
+async function getReplaylist(cameraId, startTime, endTime) {
   let keys = await getKeysBetween(cameraId, startTime, endTime);
-  console.debug('replay keys: ' + keys);
-  if (keys.length == 0) {
-    m3u8 += '#EXTM3U\r\n';
-    m3u8 += '#EXT-X-TARGETDURATION:' + TS_CLIP_DURATION.toString() + '\r\n';
-    m3u8 += '#EXT-X-PLAYLIST-TYPE:VOD\r\n';
-    m3u8 += '#EXT-X-ENDLIST\r\n';
-    return m3u8;
-  }
-
-  m3u8 += '#EXTM3U\r\n';
-  m3u8 += '#EXT-X-TARGETDURATION:' + TS_CLIP_DURATION.toString() + '\r\n';
-  m3u8 += '#EXT-X-PLAYLIST-TYPE:VOD\r\n';
+  let urls = [];
   for (let key of keys) {
     const url = await getUrl(key);
-    m3u8 += '#EXTINF:' + TS_CLIP_DURATION.toString() + ',\r\n';
-    m3u8 += url + '\r\n';
+    urls.push(url);
   }
-  m3u8 += '#EXT-X-ENDLIST\r\n';
-  return m3u8;
+  var playlist = m3u8.GetReplayListSync(urls, TS_CLIP_DURATION.toString());
+  return playlist;
 }
 
 module.exports = {
-  getLivePlaylist,
-  getMediaPlaylist
+  getLivelist,
+  getReplaylist
 }

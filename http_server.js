@@ -3,8 +3,10 @@ const fs = require('fs');
 const url = require('url');
 const moment = require('moment');
 
-const { getLivePlaylist, getMediaPlaylist } = require('./m3u8');
+const { getLivelist, getReplaylist } = require('./m3u8');
 
+const host = '0.0.0.0';
+const port = 8081;
 const options = {
   key: fs.readFileSync('./key.pem'),
   cert: fs.readFileSync('./cert.pem')
@@ -27,7 +29,7 @@ const requestListener = async function (request, response) {
       if (startStr) {
         if (moment(startStr, 'YYYY-MM-DD hh:mm:ss', false).isValid()) {
           startStr += '.000Z';
-          const m3u8 = await getLivePlaylist(cameraId, new Date(startStr));
+          const m3u8 = await getLivelist(cameraId, new Date(startStr));
           console.info(m3u8);
           response.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
           response.write(m3u8);
@@ -36,7 +38,7 @@ const requestListener = async function (request, response) {
           writeServerResponse(response, 403, 'Invalid start!' + startStr);
         }
       } else {
-        const m3u8 = await getLivePlaylist(cameraId, nowTime);
+        const m3u8 = await getLivelist(cameraId, nowTime);
         console.info(m3u8);
         response.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
         response.write(m3u8);
@@ -54,7 +56,7 @@ const requestListener = async function (request, response) {
           // take start & end as UTC.
           startStr += '.000Z';
           endStr += '.000Z';
-          const m3u8 = await getMediaPlaylist(cameraId, new Date(startStr), new Date(endStr));
+          const m3u8 = await getReplaylist(cameraId, new Date(startStr), new Date(endStr));
           console.info(m3u8);
           response.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
           response.write(m3u8);
@@ -78,6 +80,12 @@ const requestListener = async function (request, response) {
 console.debug('server creating...');
 const httpServer = https.createServer(options, requestListener);
 console.debug('server created');
+
+console.debug('server listening...');
+httpServer.listen(port, host, () => {
+  let nowTime = new Date();
+  console.log(`[${nowTime}] Server running at https://${host}:${port}/`);
+});
 
 module.exports = {
   httpServer
