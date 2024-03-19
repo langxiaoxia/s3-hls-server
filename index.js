@@ -2,6 +2,8 @@
 const {app, BrowserWindow} = require('electron')
 const path = require('path')
 
+app.commandLine.appendSwitch('ignore-certificate-errors')
+
 let mainWindow;
 
 async function createMainWindow() {
@@ -15,15 +17,15 @@ async function createMainWindow() {
 			enableRemoteModule: true,
 		}
 	})
-	
+
 	mainWindow.maximize()
 
 	// and load the index.html of the app.
 	mainWindow.loadFile('./index.html')
-	
+
 	// Open the DevTools.
 	mainWindow.webContents.openDevTools()
-	
+
 	mainWindow.on('close', (event) => {
 		app.quit()
 	})

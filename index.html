@@ -1,48 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>S3 HLS Server</title>
-    <link rel="stylesheet" href="css/index1.css"/>
-    <link rel="stylesheet" href="css/index2.css"/>
+  <meta charset="UTF-8">
+  <title>S3 HLS Server</title>
+  <link rel="stylesheet" href="css/index1.css" />
+  <link rel="stylesheet" href="css/index2.css" />
 </head>
+
 <body>
   <h1>S3 HLS Server</h1>
+
   <section>
-  <div>
-		We are using Node.js <span id="node-version"></span>,
-		Chromium <span id="chrome-version"></span>,
-		and Electron <span id="electron-version"></span>.
-  </div>
+    <div>
+      We are using Node.js <span id="node-version"></span>,
+      Chromium <span id="chrome-version"></span>,
+      and Electron <span id="electron-version"></span>.
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1" crossorigin="anonymous"></script>
+  <!-- Or if you want the latest version from the main branch -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@canary"></script> -->
+  <video id="my_video" controls autoplay playsinline></video>
+
+  <section>
+    <div>
+      <button id="live-button">直播</button>
+      <input type="datetime-local" step=".1" id="now-time" label="当前时间" value="" />
+    </div>
   </section>
 
   <section>
-  <div>
-	  <button id="live-button">直播</button>
-    <input type="datetime-local" step=".1"
-      id="now-time"
-      label="当前时间"
-      value=""
-    />
-  </div>
+    <div>
+      <button id="replay-button-1">点播(0,1)</button>
+      <input type="datetime-local" step=".1" id="start-time-1" label="开始时间" value="" />
+      <input type="datetime-local" step=".1" id="end-time-1" label="结束时间" value="" />
+    </div>
   </section>
 
   <section>
-  <div>
-	  <button id="replay-button">点播</button>
-    <input type="datetime-local" step=".1"
-      id="start-time"
-      label="开始时间"
-      value=""
-    />
-    <input type="datetime-local" step=".1"
-      id="end-time"
-      label="结束时间"
-      value=""
-    />
-  </div>
+    <div>
+      <button id="replay-button-2">点播[1,2)</button>
+      <input type="datetime-local" step=".1" id="start-time-2" label="开始时间" value="" />
+      <input type="datetime-local" step=".1" id="end-time-2" label="结束时间" value="" />
+    </div>
+  </section>
+
+  <section>
+    <div>
+      <button id="replay-button-3">点播[2,10)</button>
+      <input type="datetime-local" step=".1" id="start-time-3" label="开始时间" value="" />
+      <input type="datetime-local" step=".1" id="end-time-3" label="结束时间" value="" />
+    </div>
   </section>
 
   <script defer src="renderer.js"></script>
 </body>
+
 </html>
