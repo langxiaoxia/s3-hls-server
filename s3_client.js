@@ -1,4 +1,4 @@
-const { S3Client, ListObjectsCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, ListObjectsCommand, GetObjectCommand, HeadObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 const config = {
@@ -18,11 +18,12 @@ const TS_CLIP_DURATION = 3; // seconds
 
 const s3Client = new S3Client(config);
 
-function getSeq(key) {
+// Generate seq by key path (datetime)
+function genSeq(key) {
   const parts = key.split('/');
   if (parts.length != 7) {
     console.warn('invalid key!');
-    return 0;
+    return -1;
   }
   const year = parts[1];
   const month = parts[2];
@@ -31,7 +32,27 @@ function getSeq(key) {
   const minutes = parts[5];
   const seconds = parts[6].substr(0, 2);
   let t = new Date(year, month, date, hours, minutes, seconds);
-  return Math.trunc(t.getTime() / 3000);
+  return Math.trunc(t.getTime() / TS_CLIP_DURATION / 1000);
+}
+
+// Get seq from metadata
+async function getSeq(key) {
+  const input = {
+    Bucket: BUCKET_NAME,
+    Key: key,
+  };
+  const command = new HeadObjectCommand(input);
+
+  let seq = -1;
+  try {
+    const result = await s3Client.send(command);
+    if (result.Metadata) {
+      seq = parseInt(result.Metadata['seq'], 10);
+    }
+  } catch (err) {
+    console.error("HeadObject Error", err);
+  }
+  return seq;
 }
 
 // Get signed url for a key.
@@ -46,7 +67,7 @@ async function getUrl(key) {
   try {
     url = await getSignedUrl(s3Client, command, { expiresIn: PRESIGNED_URL_EXPIRES });
   } catch (err) {
-    console.log("Error", err);
+    console.error("getSignedUrl Error", err);
   }
   return url;
 }
@@ -70,7 +91,7 @@ async function getKeys(prefix) {
       }
     }
   } catch (err) {
-    console.log("Error", err);
+    console.error("ListObjects Error", err);
   }
   return keys;
 }
@@ -152,8 +173,8 @@ async function getKeysLatest(cameraId, nowTime) {
 async function getKeysBetween(cameraId, startTime, endTime) {
   let keys = [];
 
-  console.debug('start: ' + startTime);
-  console.debug('end: ' + endTime);
+  // console.debug('start: ' + startTime);
+  // console.debug('end: ' + endTime);
   if (startTime.getTime() > endTime.getTime()) {
     console.warn('start more than end!');
     return keys;
@@ -169,25 +190,25 @@ async function getKeysBetween(cameraId, startTime, endTime) {
     && startTime.getDate() == endTime.getDate()
     && startTime.getHours() == endTime.getHours()
     && startTime.getMinutes() == endTime.getMinutes()) {
-    console.debug('[1] time span in same minute');
+    // console.debug('[1] time span in same minute');
     keys = await getMinuteKeys(cameraId, startTime, endTime);
     return keys;
   }
 
   let startTimeTail = new Date(startTime);
   startTimeTail.setSeconds(59);
-  console.debug('start tail: ' + startTimeTail);
+  // console.debug('start tail: ' + startTimeTail);
   let start_keys = await getMinuteKeys(cameraId, startTime, startTimeTail);
   // console.debug('start keys: ' + start_keys);
 
   let endTimeHead = new Date(endTime);
   endTimeHead.setSeconds(0);
-  console.debug('end head: ' + endTimeHead);
+  // console.debug('end head: ' + endTimeHead);
   let end_keys = await getMinuteKeys(cameraId, endTimeHead, endTime);
   // console.debug('end keys: ' + end_keys);
 
   if ((endTime.getTime() - startTime.getTime()) < 120 * 1000) {
-    console.debug('[2] time span less than two minutes');
+    // console.debug('[2] time span less than two minutes');
     if (start_keys.length > 0) {
       keys.push.apply(keys, start_keys);
     }
@@ -197,18 +218,18 @@ async function getKeysBetween(cameraId, startTime, endTime) {
     return keys;
   }
 
-  console.debug('[3] time span more than two minutes');
+  // console.debug('[3] time span more than two minutes');
   if (start_keys.length > 0) {
     keys.push.apply(keys, start_keys);
   }
 
   let nextStartTime = new Date(startTime);
   nextStartTime.setMinutes(nextStartTime.getMinutes() + 1);
-  console.debug('next start: ' + nextStartTime);
+  // console.debug('next start: ' + nextStartTime);
 
   let prevEndTime = new Date(endTime);
   prevEndTime.setMinutes(prevEndTime.getMinutes() - 1);
-  console.debug('prev end: ' + prevEndTime);
+  // console.debug('prev end: ' + prevEndTime);
 
   const prefixs = buildPrefixs(cameraId, nextStartTime, prevEndTime);
   for (let prefix of prefixs) {

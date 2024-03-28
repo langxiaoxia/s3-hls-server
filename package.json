@@ -2,15 +2,18 @@
   "name": "s3-hls-server",
   "version": "1.0.0",
   "description": "",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node http_server.js"
+    "gui": "electron .",
+    "cli": "node http_server.js"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.113.0",
     "@aws-sdk/s3-request-presigner": "^3.113.0",
+    "electron": "^13.1.4",
     "moment": "^2.29.3"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
 const { httpServer } = require('./http_server');
-const { getLivelist, getReplaylist } = require('./m3u8');
+const { getLivePlaylist, getVoDPlaylist } = require('./m3u8');
 
 const host = '0.0.0.0';
 const port = 8081;
@@ -39,7 +39,7 @@ liveButton.onclick = async function () {
   let nowTime = new Date();
   let nowStr = toISOStringWithTimezone(nowTime);
   nowTimeCtrl.value = nowStr.substr(0, 19);
-  let m3u8 = await getLivelist(camera_id, nowTime);
+  let m3u8 = await getLivePlaylist(camera_id, nowTime);
   console.debug('live m3u8: ' + m3u8);
 
   var video = document.getElementById('my_video');
@@ -67,25 +67,25 @@ liveButton.onclick = async function () {
 replayButton1.onclick = async function () {
   let startTime = new Date(startTimeCtrl1.value);
   let endTime = new Date(endTimeCtrl1.value);
-  let m3u8 = await getReplaylist(camera_id, startTime, endTime);
+  let m3u8 = await getVoDPlaylist(camera_id, startTime, endTime);
   console.debug('replay1 m3u8: ' + m3u8);
 }
 
 replayButton2.onclick = async function () {
   let startTime = new Date(startTimeCtrl2.value);
   let endTime = new Date(endTimeCtrl2.value);
-  let m3u8 = await getReplaylist(camera_id, startTime, endTime);
+  let m3u8 = await getVoDPlaylist(camera_id, startTime, endTime);
   console.debug('replay2 m3u8: ' + m3u8);
 }
 
 replayButton3.onclick = async function () {
   let startTime = new Date(startTimeCtrl3.value);
   let endTime = new Date(endTimeCtrl3.value);
-  let m3u8 = await getReplaylist(camera_id, startTime, endTime);
+  let m3u8 = await getVoDPlaylist(camera_id, startTime, endTime);
   console.debug('replay3 m3u8: ' + m3u8);
 }
 
-console.debug('server listening...');
+console.debug(`[${process.pid}] server starting...`);
 httpServer.listen(port, host, () => {
   // (0) live
   let nowTime = new Date();
@@ -116,5 +116,6 @@ httpServer.listen(port, host, () => {
   let endStr3 = toISOStringWithTimezone(endTime3);
   endTimeCtrl3.value = endStr3.substr(0, 19);
 
-  console.log(`[${nowStr}] Server running at https://${host}:${port}/`);
+  console.log(`[${process.pid}] [${nowTime.toISOString()}] Server running at https://${host}:${port}/`);
 });
+console.debug(`[${process.pid}] server started`);

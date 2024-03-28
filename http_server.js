@@ -3,7 +3,7 @@ const fs = require('fs');
 const url = require('url');
 const moment = require('moment');
 
-const { getLivelist, getReplaylist } = require('./m3u8');
+const { getLivePlaylist, getVoDPlaylist } = ((require.main === module) ? require('./m3u8_jar') : require('./m3u8'));
 
 const host = '0.0.0.0';
 const port = 8081;
@@ -20,7 +20,7 @@ function writeServerResponse(response, statusCode, statusMessage) {
 
 const requestListener = async function (request, response) {
   const nowTime = new Date();
-  console.info(`[${nowTime.toISOString()}] ${request.url}`);
+  console.info(`[${process.pid}] [${nowTime.toISOString()}] [${request.socket.remoteAddress}:${request.socket.remotePort}] ${request.url}`);
   const playlistType = url.parse(request.url, true).pathname;
   const cameraId = url.parse(request.url, true).query['camera_id'];
   if (playlistType === '/live.m3u8') {
@@ -29,8 +29,7 @@ const requestListener = async function (request, response) {
       if (startStr) {
         if (moment(startStr, 'YYYY-MM-DD hh:mm:ss', false).isValid()) {
           startStr += '.000Z';
-          const m3u8 = await getLivelist(cameraId, new Date(startStr));
-          console.info(m3u8);
+          const m3u8 = await getLivePlaylist(cameraId, new Date(startStr));
           response.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
           response.write(m3u8);
           response.end();
@@ -38,8 +37,8 @@ const requestListener = async function (request, response) {
           writeServerResponse(response, 403, 'Invalid start!' + startStr);
         }
       } else {
-        const m3u8 = await getLivelist(cameraId, nowTime);
-        console.info(m3u8);
+        const m3u8 = await getLivePlaylist(cameraId, nowTime);
+        console.info(`[${process.pid}] [${new Date().toISOString()}] [${request.socket.remoteAddress}:${request.socket.remotePort}] live!`);
         response.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
         response.write(m3u8);
         response.end();
@@ -56,8 +55,8 @@ const requestListener = async function (request, response) {
           // take start & end as UTC.
           startStr += '.000Z';
           endStr += '.000Z';
-          const m3u8 = await getReplaylist(cameraId, new Date(startStr), new Date(endStr));
-          console.info(m3u8);
+          const m3u8 = await getVoDPlaylist(cameraId, new Date(startStr), new Date(endStr));
+          console.info(`[${process.pid}] [${new Date().toISOString()}] [${request.socket.remoteAddress}:${request.socket.remotePort}] vod!`);
           response.writeHead(200, { 'Access-Control-Allow-Origin': '*' });
           response.write(m3u8);
           response.end();
@@ -77,15 +76,18 @@ const requestListener = async function (request, response) {
   }
 }
 
-console.debug('server creating...');
+console.debug(`[${process.pid}] server creating...`);
 const httpServer = https.createServer(options, requestListener);
-console.debug('server created');
+console.debug(`[${process.pid}] server created`);
 
-console.debug('server listening...');
-httpServer.listen(port, host, () => {
-  let nowTime = new Date();
-  console.log(`[${nowTime}] Server running at https://${host}:${port}/`);
-});
+if (require.main === module) {
+  console.debug(`[${process.pid}] server starting...`);
+  httpServer.listen(port, host, () => {
+    let nowTime = new Date();
+    console.log(`[${process.pid}] [${nowTime.toISOString()}] Server running at https://${host}:${port}/`);
+  });
+  console.debug(`[${process.pid}] server started`);
+}
 
 module.exports = {
   httpServer
