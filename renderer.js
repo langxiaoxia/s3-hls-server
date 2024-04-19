@@ -1,24 +1,17 @@
-const { httpServer } = require('./http_server');
-const { getLivePlaylist, getVoDPlaylist } = require('./m3u8');
+const { httpServer, port, host, append_num } = require('./http_server');
+const { getLivePlaylist, getVoDPlaylist, getEventPlaylist } = require('./m3u8');
 
-const host = '0.0.0.0';
-const port = 8081;
 const camera_id = process.env.AWS_S3_PREFIX;
 
 let liveButton = document.getElementById('live-button');
-let nowTimeCtrl = document.getElementById('now-time');
 
-let replayButton1 = document.getElementById('replay-button-1');
-let startTimeCtrl1 = document.getElementById('start-time-1');
-let endTimeCtrl1 = document.getElementById('end-time-1');
+let vodButton = document.getElementById('vod-button');
+let vodStartTimeCtrl = document.getElementById('vod-start-time');
+let vodEndTimeCtrl = document.getElementById('vod-end-time');
 
-let replayButton2 = document.getElementById('replay-button-2');
-let startTimeCtrl2 = document.getElementById('start-time-2');
-let endTimeCtrl2 = document.getElementById('end-time-2');
-
-let replayButton3 = document.getElementById('replay-button-3');
-let startTimeCtrl3 = document.getElementById('start-time-3');
-let endTimeCtrl3 = document.getElementById('end-time-3');
+let eventButton = document.getElementById('event-button');
+let eventStartTimeCtrl = document.getElementById('event-start-time');
+let eventEndTimeCtrl = document.getElementById('event-end-time');
 
 // for datetime-local control
 const toISOStringWithTimezone = date => {
@@ -35,87 +28,90 @@ const toISOStringWithTimezone = date => {
     ':' + pad(tzOffset % 60);
 }
 
-liveButton.onclick = async function () {
-  let nowTime = new Date();
-  let nowStr = toISOStringWithTimezone(nowTime);
-  nowTimeCtrl.value = nowStr.substr(0, 19);
-  let m3u8 = await getLivePlaylist(camera_id, nowTime);
-  console.debug('live m3u8: ' + m3u8);
+function playVideo(url) {
+  console.log(url);
+  let video = document.getElementById('my_video');
+  video.pause();
+  video.src = null;
 
-  var video = document.getElementById('my_video');
-  var videoSrc = 'https://localhost:8081/live.m3u8?camera_id=demo';
   //
   // First check for native browser HLS support
   //
-  // if (video.canPlayType('application/vnd.apple.mpegurl')) {
-  if (video.canPlayType('application/x-mpegURL')) {
+  if (video.canPlayType('application/vnd.apple.mpegurl')) {
     console.log('native browser HLS is supported!');
-    video.src = videoSrc;
-    //
-    // If no native HLS support, check if HLS.js is supported
-    //
+    video.src = url;
+    video.addEventListener('canplay', function () {
+      video.muted = true;
+      video.play();
+    });
+  //
+  // If no native HLS support, check if HLS.js is supported
+  //
   } else if (Hls.isSupported()) {
     console.log('HLS.js is supported!');
-    var hls = new Hls();
-    hls.loadSource(videoSrc);
-    hls.attachMedia(video);
+    self.hls = new Hls({
+      debug: true,
+    });
+    self.hls.loadSource(url);
+    self.hls.attachMedia(video);
+    self.hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+      video.muted = true;
+      video.play();
+    });
   } else {
     console.log('neither native browser HLS nor HLS.js is supported!');
   }
 }
 
-replayButton1.onclick = async function () {
-  let startTime = new Date(startTimeCtrl1.value);
-  let endTime = new Date(endTimeCtrl1.value);
-  let m3u8 = await getVoDPlaylist(camera_id, startTime, endTime);
-  console.debug('replay1 m3u8: ' + m3u8);
+liveButton.onclick = async function () {
+  const nowTime = new Date();
+  const playlist = await getLivePlaylist(camera_id, nowTime, -1);
+  console.debug(playlist.m3u8);
+
+  const url = `https://localhost:${port}/live.m3u8?camera_id=${camera_id}`;
+  playVideo(url);
 }
 
-replayButton2.onclick = async function () {
-  let startTime = new Date(startTimeCtrl2.value);
-  let endTime = new Date(endTimeCtrl2.value);
-  let m3u8 = await getVoDPlaylist(camera_id, startTime, endTime);
-  console.debug('replay2 m3u8: ' + m3u8);
+vodButton.onclick = async function () {
+  const startTime = new Date(vodStartTimeCtrl.value);
+  const endTime = new Date(vodEndTimeCtrl.value);
+  const playlist = await getVoDPlaylist(camera_id, startTime, endTime);
+  console.debug(playlist.m3u8);
+
+  const startStr = startTime.toISOString().substr(0, 19).replace('T', ' ');
+  const endStr = endTime.toISOString().substr(0, 19).replace('T', ' ');
+  const url = `https://localhost:${port}/vod.m3u8?camera_id=${camera_id}&start=${startStr}&end=${endStr}`;
+  playVideo(url);
 }
 
-replayButton3.onclick = async function () {
-  let startTime = new Date(startTimeCtrl3.value);
-  let endTime = new Date(endTimeCtrl3.value);
-  let m3u8 = await getVoDPlaylist(camera_id, startTime, endTime);
-  console.debug('replay3 m3u8: ' + m3u8);
+eventButton.onclick = async function () {
+  const startTime = new Date(eventStartTimeCtrl.value);
+  const endTime = new Date(eventEndTimeCtrl.value);
+  const playlist = await getEventPlaylist(camera_id, startTime, endTime, null, -1, append_num);
+  console.debug(playlist.m3u8);
+
+  const startStr = startTime.toISOString().substr(0, 19).replace('T', ' ');
+  const endStr = endTime.toISOString().substr(0, 19).replace('T', ' ');
+  const url = `https://localhost:${port}/event.m3u8?camera_id=${camera_id}&start=${startStr}&end=${endStr}`;
+  playVideo(url);
 }
 
-console.debug(`[${process.pid}] server starting...`);
+// console.debug(`[${process.pid}] server starting...`);
 httpServer.listen(port, host, () => {
-  // (0) live
-  let nowTime = new Date();
-  let nowStr = toISOStringWithTimezone(nowTime);
-  nowTimeCtrl.value = nowStr.substr(0, 19);
-
-  // (1) in same minute
-  let startTime1 = new Date('2024-03-11 14:04:00');
-  let endTime1 = new Date('2024-03-11 14:04:59');
-  let startStr1 = toISOStringWithTimezone(startTime1);
-  startTimeCtrl1.value = startStr1.substr(0, 19);
-  let endStr1 = toISOStringWithTimezone(endTime1);
-  endTimeCtrl1.value = endStr1.substr(0, 19);
-
-  // (2) not in same minute and less than two minutes.
-  let startTime2 = new Date('2024-03-11 14:04:00');
-  let endTime2 = new Date('2024-03-11 14:05:59');
-  let startStr2 = toISOStringWithTimezone(startTime2);
-  startTimeCtrl2.value = startStr2.substr(0, 19);
-  let endStr2 = toISOStringWithTimezone(endTime2);
-  endTimeCtrl2.value = endStr2.substr(0, 19);
-
-  // (3) 2 min <= ts <= 10 min
-  let startTime3 = new Date('2024-03-11 14:04:00');
-  let endTime3 = new Date('2024-03-11 14:12:59');
-  let startStr3 = toISOStringWithTimezone(startTime3);
-  startTimeCtrl3.value = startStr3.substr(0, 19);
-  let endStr3 = toISOStringWithTimezone(endTime3);
-  endTimeCtrl3.value = endStr3.substr(0, 19);
-
+  const nowTime = new Date();
   console.log(`[${process.pid}] [${nowTime.toISOString()}] Server running at https://${host}:${port}/`);
+
+  const startTime = new Date(nowTime.getTime() - 600 * 1000);
+  const endTime = new Date(nowTime);
+  const startStr = toISOStringWithTimezone(startTime);
+  const endStr = toISOStringWithTimezone(endTime);
+
+  // VOD
+  vodStartTimeCtrl.value = startStr.substr(0, 19);
+  vodEndTimeCtrl.value = endStr.substr(0, 19);
+
+  // EVENT
+  eventStartTimeCtrl.value = startStr.substr(0, 19);
+  eventEndTimeCtrl.value = endStr.substr(0, 19);
 });
-console.debug(`[${process.pid}] server started`);
+// console.debug(`[${process.pid}] server started`);

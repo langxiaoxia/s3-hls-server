@@ -13,8 +13,9 @@
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.113.0",
     "@aws-sdk/s3-request-presigner": "^3.113.0",
-    "electron": "^13.1.4",
-    "moment": "^2.29.3"
+    "electron": "^13.6.3",
+    "moment": "^2.29.3",
+    "zlib": "^1.0.5"
   },
   "dependencies": {
     "java": "^0.14.0"

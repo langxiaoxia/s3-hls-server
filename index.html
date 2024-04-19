@@ -8,6 +8,14 @@
   <link rel="stylesheet" href="css/index2.css" />
 </head>
 
+<style>
+  .video_container {
+    width: 80%;
+    margin: 0 auto;
+    display: block;
+  }
+</style>
+
 <body>
   <h1>S3 HLS Server</h1>
 
@@ -19,39 +27,36 @@
     </div>
   </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1" crossorigin="anonymous"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@1" crossorigin="anonymous"></script> -->
   <!-- Or if you want the latest version from the main branch -->
   <!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@canary"></script> -->
-  <video id="my_video" controls autoplay playsinline></video>
+  <script src="hls.js"></script>
 
   <section>
     <div>
-      <button id="live-button">直播</button>
-      <input type="datetime-local" step=".1" id="now-time" label="当前时间" value="" />
+      <video class="video_container" id="my_video" controls playsinline></video>
+  </div>
+  </section>
+
+  <section>
+    <div>
+      <button id="live-button">Live</button>
     </div>
   </section>
 
   <section>
     <div>
-      <button id="replay-button-1">点播(0,1)</button>
-      <input type="datetime-local" step=".1" id="start-time-1" label="开始时间" value="" />
-      <input type="datetime-local" step=".1" id="end-time-1" label="结束时间" value="" />
+      <button id="vod-button">VOD</button>
+      <input type="datetime-local" step=".1" id="vod-start-time" label="开始时间" value="" />
+      <input type="datetime-local" step=".1" id="vod-end-time" label="结束时间" value="" />
     </div>
   </section>
 
   <section>
     <div>
-      <button id="replay-button-2">点播[1,2)</button>
-      <input type="datetime-local" step=".1" id="start-time-2" label="开始时间" value="" />
-      <input type="datetime-local" step=".1" id="end-time-2" label="结束时间" value="" />
-    </div>
-  </section>
-
-  <section>
-    <div>
-      <button id="replay-button-3">点播[2,10)</button>
-      <input type="datetime-local" step=".1" id="start-time-3" label="开始时间" value="" />
-      <input type="datetime-local" step=".1" id="end-time-3" label="结束时间" value="" />
+      <button id="event-button">EVENT</button>
+      <input type="datetime-local" step=".1" id="event-start-time" label="开始时间" value="" />
+      <input type="datetime-local" step=".1" id="event-end-time" label="结束时间" value="" />
     </div>
   </section>
 
