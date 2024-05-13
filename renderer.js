@@ -5,9 +5,25 @@ const camera_id = process.env.AWS_S3_PREFIX;
 
 let liveButton = document.getElementById('live-button');
 
-let vodButton = document.getElementById('vod-button');
-let vodStartTimeCtrl = document.getElementById('vod-start-time');
-let vodEndTimeCtrl = document.getElementById('vod-end-time');
+// vod buttons
+let vod_controls = document.querySelectorAll('.vod_control');
+vod_controls.forEach(function(control){
+  var vod_button = control.querySelector('.vod_button');
+
+  var vod_start = control.querySelector('.vod_start');
+  const startTime = new Date(vod_start.value);
+  const startStr = startTime.toISOString().substr(0, 19).replace('T', ' ');
+
+  var vod_end = control.querySelector('.vod_end');
+  const endTime = new Date(vod_end.value);
+  const endStr = endTime.toISOString().substr(0, 19).replace('T', ' ');
+
+  vod_button.addEventListener('click', async function() {
+    console.log('VOD button clicked:', this.innerText);
+    const url = `https://localhost:${port}/vod.m3u8?camera_id=${camera_id}&start=${startStr}&end=${endStr}`;
+    playVideo(url);
+    });
+});
 
 let eventButton = document.getElementById('event-button');
 let eventStartTimeCtrl = document.getElementById('event-start-time');
@@ -72,18 +88,6 @@ liveButton.onclick = async function () {
   playVideo(url);
 }
 
-vodButton.onclick = async function () {
-  const startTime = new Date(vodStartTimeCtrl.value);
-  const endTime = new Date(vodEndTimeCtrl.value);
-  const playlist = await getVoDPlaylist(camera_id, startTime, endTime);
-  console.debug(playlist.m3u8);
-
-  const startStr = startTime.toISOString().substr(0, 19).replace('T', ' ');
-  const endStr = endTime.toISOString().substr(0, 19).replace('T', ' ');
-  const url = `https://localhost:${port}/vod.m3u8?camera_id=${camera_id}&start=${startStr}&end=${endStr}`;
-  playVideo(url);
-}
-
 eventButton.onclick = async function () {
   const startTime = new Date(eventStartTimeCtrl.value);
   const endTime = new Date(eventEndTimeCtrl.value);
@@ -100,18 +104,5 @@ eventButton.onclick = async function () {
 httpServer.listen(port, host, () => {
   const nowTime = new Date();
   console.log(`[${process.pid}] [${nowTime.toISOString()}] Server running at https://${host}:${port}/`);
-
-  const startTime = new Date(nowTime.getTime() - 600 * 1000);
-  const endTime = new Date(nowTime);
-  const startStr = toISOStringWithTimezone(startTime);
-  const endStr = toISOStringWithTimezone(endTime);
-
-  // VOD
-  vodStartTimeCtrl.value = startStr.substr(0, 19);
-  vodEndTimeCtrl.value = endStr.substr(0, 19);
-
-  // EVENT
-  eventStartTimeCtrl.value = startStr.substr(0, 19);
-  eventEndTimeCtrl.value = endStr.substr(0, 19);
 });
 // console.debug(`[${process.pid}] server started`);

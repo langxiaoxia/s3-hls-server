@@ -14,6 +14,20 @@
     margin: 0 auto;
     display: block;
   }
+
+  .vod_control {
+    border: none;
+  }
+  .vod_button {
+    border: none;
+    cursor: pointer;
+  }
+  .vod_start {
+    width: 260px;
+  }
+  .vod_end {
+    width: 260px;
+  }
 </style>
 
 <body>
@@ -38,25 +52,37 @@
   </div>
   </section>
 
-  <section>
+  <section hidden>
     <div>
       <button id="live-button">Live</button>
     </div>
   </section>
 
   <section>
-    <div>
-      <button id="vod-button">VOD</button>
-      <input type="datetime-local" step=".1" id="vod-start-time" label="开始时间" value="" />
-      <input type="datetime-local" step=".1" id="vod-end-time" label="结束时间" value="" />
+    <div class="vod_control">
+      <button class="vod_button">VOD1</button>
+      <input class="vod_start" type="datetime-local" step=".1" label="开始时间" value="2024-04-19T18:00:00" />
+      <input class="vod_end" type="datetime-local" step=".1" label="结束时间" value="2024-04-19T18:01:00" />
+    </div>
+
+    <div class="vod_control">
+      <button class="vod_button">VOD2</button>
+      <input class="vod_start" type="datetime-local" step=".1" label="开始时间" value="2024-04-19T18:01:00" />
+      <input class="vod_end" type="datetime-local" step=".1" label="结束时间" value="2024-04-19T18:03:00" />
+    </div>
+
+    <div class="vod_control">
+      <button class="vod_button">VOD3</button>
+      <input class="vod_start" type="datetime-local" step=".1" label="开始时间" value="2024-04-19T18:03:00" />
+      <input class="vod_end" type="datetime-local" step=".1" label="结束时间" value="2024-04-19T18:08:00" />
     </div>
   </section>
 
-  <section>
+  <section hidden>
     <div>
       <button id="event-button">EVENT</button>
-      <input type="datetime-local" step=".1" id="event-start-time" label="开始时间" value="" />
-      <input type="datetime-local" step=".1" id="event-end-time" label="结束时间" value="" />
+      <input type="datetime-local" step=".1" id="event-start-time" label="开始时间" value="2024-04-19T18:00:00" />
+      <input type="datetime-local" step=".1" id="event-end-time" label="结束时间" value="2024-04-19T18:10:00" />
     </div>
   </section>
 

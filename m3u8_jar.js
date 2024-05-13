@@ -1,6 +1,16 @@
 const { TS_CLIP_DURATION, getSeq, getUrl, getKeysLatest, getKeysBetween } = require('./s3_client');
+
+
+// To use Jar in Node.js:
+// (1) Load node-java bridge.
 const java = require("java");
-var m3u8_jar = java.import("m3u8");
+
+// (2) Set Java class path which include the jar file.
+java.classpath.push('./m3u8gen/m3u8gen.jar');
+
+// (3) Load Java class.
+const m3u8_jar = java.import("com.grandstream.gdms.gds.M3u8gen");
+
 
 async function getLivePlaylist(cameraId, nowTime, lastSeq) {
   let keys = await getKeysLatest(cameraId, nowTime);
@@ -32,12 +42,17 @@ async function getLivePlaylist(cameraId, nowTime, lastSeq) {
   }
 
   // get live m3u8 by jar.
-  var playlist = m3u8_jar.GetLivePlaylistSync(TS_CLIP_DURATION, keys.length, seqs, infs, urls);
-  if (playlist == "") {
+  try {
+    var playlist = m3u8_jar.GetLivePlaylistSync(TS_CLIP_DURATION, keys.length, seqs, infs, urls);
+    if (playlist == "") {
+      return {m3u8: null, seq: -1};
+    }
+
+    return {m3u8: playlist, seq: first_seq};
+  } catch (error) {
+    console.error('GetLivePlaylist by jar exception:', error);
     return {m3u8: null, seq: -1};
   }
-
-  return {m3u8: playlist, seq: first_seq};
 }
 
 async function getVoDPlaylist(cameraId, startTime, endTime) {
@@ -62,12 +77,17 @@ async function getVoDPlaylist(cameraId, startTime, endTime) {
   }
 
   // get vod m3u8 by jar.
-  var playlist = m3u8_jar.GetVoDPlaylistSync(TS_CLIP_DURATION, first_seq, keys.length, infs, urls);
-  if (playlist == "") {
+  try {
+    var playlist = m3u8_jar.GetVoDPlaylistSync(TS_CLIP_DURATION, first_seq, keys.length, infs, urls);
+    if (playlist == "") {
+      return {m3u8: null, seq: -1};
+    }
+
+    return {m3u8: playlist, seq: first_seq};
+  } catch (error) {
+    console.error('GetVoDPlaylist by jar exception:', error);
     return {m3u8: null, seq: -1};
   }
-
-  return {m3u8: playlist, seq: first_seq};
 }
 
 async function getEventPlaylist(cameraId, startTime, endTime, lastM3U8, lastSeq, appendNum) {
@@ -124,16 +144,22 @@ async function getEventPlaylist(cameraId, startTime, endTime, lastM3U8, lastSeq,
   // get event m3u8 by jar.
   var head = (lastM3U8 == null);
   var end = (total == keys.length);
-  var playlist = m3u8_jar.GetEventPlaylistSync(TS_CLIP_DURATION, first_seq, count, infs, urls, head, end);
-  if (playlist == "") {
+  try {
+    var playlist = m3u8_jar.GetEventPlaylistSync(TS_CLIP_DURATION, first_seq, count, infs, urls, head, end);
+    if (playlist == "") {
+      return {m3u8: null, seq: -1};
+    }
+
+    if (lastM3U8) {
+      playlist = lastM3U8 + playlist;
+    }
+    return {m3u8: playlist, seq: last_seq};
+  } catch (error) {
+    console.error('GetEventPlaylist by jar exception:', error);
     return {m3u8: null, seq: -1};
   }
-
-  if (lastM3U8) {
-    playlist = lastM3U8 + playlist;
-  }
-  return {m3u8: playlist, seq: last_seq};
 }
+
 
 module.exports = {
   getLivePlaylist,

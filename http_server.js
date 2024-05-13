@@ -17,6 +17,7 @@ const options = {
 };
 
 const mime_type = 'application/vnd.apple.mpegURL';
+const time_format = 'YYYY-MM-DD HH:mm:ss'
 
 function writeServerResponse(response, statusCode, statusMessage) {
   response.writeHead(statusCode);
@@ -27,7 +28,7 @@ function writeServerResponse(response, statusCode, statusMessage) {
 function getTime(timeStr, defaultTime) {
   if (timeStr) {
     // timeStr must have valid format
-    if (!moment(timeStr, 'YYYY-MM-DD hh:mm:ss', false).isValid()) {
+    if (!moment(timeStr, time_format, true).isValid()) {
       return null;
     }
     // take timeStr as UTC.

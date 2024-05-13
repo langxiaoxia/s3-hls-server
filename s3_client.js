@@ -2,6 +2,7 @@ const { S3Client, ListObjectsCommand, GetObjectCommand, HeadObjectCommand } = re
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 const log_debug = false;
+const use_local_url = 'http://192.168.131.37/';
 
 const config = {
   region: process.env.AWS_S3_REGION,
@@ -44,6 +45,10 @@ async function getSeq(key) {
 
 // Get signed url for a key.
 async function getUrl(key) {
+  if (typeof use_local_url === 'string') {
+    return use_local_url + key;;
+  }
+
   const input = {
     Bucket: BUCKET_NAME,
     Key: key,
